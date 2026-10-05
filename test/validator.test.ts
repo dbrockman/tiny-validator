@@ -124,7 +124,7 @@ describe("array", () => {
 
 	it("reports the failing index", () => {
 		expect(() => v.assert(schema, ["a", 1])).toThrow(
-			"input.1 must be a string",
+			"input[1] must be a string",
 		);
 	});
 });
@@ -149,7 +149,7 @@ describe("object", () => {
 	it("reports nested paths", () => {
 		const nested = v.object({ a: v.object({ b: v.array(v.number()) }) });
 		expect(() => v.assert(nested, { a: { b: [1, "x"] } })).toThrow(
-			"input.a.b.1 must be a number",
+			"input[a][b][1] must be a number",
 		);
 	});
 
@@ -169,7 +169,7 @@ describe("objectWithRest", () => {
 		expect(v.is(schema, { id: 1, a: "x" })).toBe(true);
 		expect(v.is(schema, { id: "1" })).toBe(false);
 		expect(() => v.assert(schema, { id: 1, a: 2 })).toThrow(
-			"input.a must be a string",
+			"input[a] must be a string",
 		);
 	});
 });
@@ -180,7 +180,7 @@ describe("strictObject", () => {
 	it("rejects unknown keys", () => {
 		expect(v.is(schema, { id: 1 })).toBe(true);
 		expect(() => v.assert(schema, { id: 1, extra: 1 })).toThrow(
-			"input.extra must be omitted",
+			"input[extra] must be omitted",
 		);
 	});
 });
@@ -220,7 +220,7 @@ describe("tupleWithRest", () => {
 		expect(v.is(schema, ["a", "b", 1, 2])).toBe(true);
 		expect(v.is(schema, ["a"])).toBe(false);
 		expect(() => v.assert(schema, ["a", "b", 1, "x"])).toThrow(
-			"input.3 must be a number",
+			"input[3] must be a number",
 		);
 	});
 
@@ -250,6 +250,16 @@ describe("set", () => {
 		expect(v.is(schema, new Set([1, 2]))).toBe(true);
 		expect(v.is(schema, new Set([1, "2"]))).toBe(false);
 		expect(v.is(schema, [1, 2])).toBe(false);
+		expect(() => v.assert(schema, new Set([1, "x"]))).toThrow(
+			"input[(value at index 1)] must be a number",
+		);
+	});
+
+	it("reports nested paths within members", () => {
+		const nested = v.set(v.object({ name: v.string() }));
+		expect(() =>
+			v.assert(nested, new Set([{ name: "a" }, { name: 1 }])),
+		).toThrow("input[(value at index 1)][name] must be a string");
 	});
 });
 
@@ -262,6 +272,17 @@ describe("map", () => {
 		expect(v.is(schema, new Map([[1, 1]]))).toBe(false);
 		expect(v.is(schema, new Map([["a", "1"]]))).toBe(false);
 		expect(v.is(schema, {})).toBe(false);
+	});
+
+	it("reports whether the key or the value failed", () => {
+		const input = (entry: [unknown, unknown]) =>
+			new Map<unknown, unknown>([["a", 1], entry]);
+		expect(() => v.assert(schema, input([1, 1]))).toThrow(
+			"input[(key at index 1)] must be a string",
+		);
+		expect(() => v.assert(schema, input(["b", "1"]))).toThrow(
+			"input[(value at index 1)] must be a number",
+		);
 	});
 });
 

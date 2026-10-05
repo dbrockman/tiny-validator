@@ -47,7 +47,7 @@ export function assert<const S extends Schema>(
 	if (issue) {
 		issue.path.push("input");
 		throw new TypeError(
-			`${issue.path.reverse().join(".")} must be ${issue.expected}`,
+			`${issue.path.reverse().join("")} must be ${issue.expected}`,
 		);
 	}
 }
@@ -132,7 +132,7 @@ export function array<const Item extends Schema>(
 		for (let i = 0; i < input.length; i++) {
 			const issue = item(input[i]);
 			if (issue) {
-				issue.path.push(i);
+				issue.path.push(`[${i}]`);
 				return issue;
 			}
 		}
@@ -149,7 +149,7 @@ export function object<const T extends ObjectEntries>(
 		for (const [key, schema] of Object.entries(entries)) {
 			const issue = schema((input as any)[key]);
 			if (issue) {
-				issue.path.push(key);
+				issue.path.push(`[${key}]`);
 				return issue;
 			}
 		}
@@ -170,15 +170,15 @@ export function objectWithRest<
 		for (const [key, schema] of Object.entries(entries)) {
 			const issue = schema((input as any)[key]);
 			if (issue) {
-				issue.path.push(key);
+				issue.path.push(`[${key}]`);
 				return issue;
 			}
 		}
-		for (const [k, v] of Object.entries(input)) {
-			if (entries[k]) continue;
-			const issue = rest(v);
+		for (const [key, value] of Object.entries(input)) {
+			if (entries[key]) continue;
+			const issue = rest(value);
 			if (issue) {
-				issue.path.push(k);
+				issue.path.push(`[${key}]`);
 				return issue;
 			}
 		}
@@ -202,7 +202,7 @@ export function record<
 		for (const [k, v] of Object.entries(input)) {
 			const issue = key(k) || value(v);
 			if (issue) {
-				issue.path.push(k);
+				issue.path.push(`[${k}]`);
 				return issue;
 			}
 		}
@@ -236,11 +236,14 @@ export function set<const Item extends Schema>(
 		if (!(input instanceof Set)) {
 			return { expected: "a Set", path: [] };
 		}
+		let i = 0;
 		for (const v of input) {
 			const issue = item(v);
 			if (issue) {
+				issue.path.push(`[(value at index ${i})]`);
 				return issue;
 			}
+			i++;
 		}
 	};
 }
@@ -253,12 +256,19 @@ export function map<const K extends Schema, const V extends Schema>(
 		if (!(input instanceof Map)) {
 			return { expected: "a Map", path: [] };
 		}
+		let i = 0;
 		for (const [k, v] of input) {
-			const issue = key(k) || value(v);
+			let issue = key(k);
 			if (issue) {
-				issue.path.push(k);
+				issue.path.push(`[(key at index ${i})]`);
 				return issue;
 			}
+			issue = value(v);
+			if (issue) {
+				issue.path.push(`[(value at index ${i})]`);
+				return issue;
+			}
+			i++;
 		}
 	};
 }
@@ -279,7 +289,7 @@ export function tuple<const T extends TupleItems>(
 		for (let i = 0; i < items.length; i++) {
 			const issue = items[i](input[i]);
 			if (issue) {
-				issue.path.push(i);
+				issue.path.push(`[${i}]`);
 				return issue;
 			}
 		}
@@ -298,7 +308,7 @@ export function tupleWithRest<const T extends TupleItems, R extends Schema>(
 		for (let i = 0; i < l; i++) {
 			const issue = (items[i] || rest)(input[i]);
 			if (issue) {
-				issue.path.push(i);
+				issue.path.push(`[${i}]`);
 				return issue;
 			}
 		}
